@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-
+		A661FCA02E00699700176DF0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A661FC9F2E00699700176DF0 /* FirebaseCore */; };
+		A661FCA22E00699700176DF0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A661FCA12E00699700176DF0 /* FirebaseFirestore */; };
+		A661FCA42E00699700176DF0 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A661FCA32E00699700176DF0 /* FirebaseMessaging */; };
 		A66D3B722DFD2AE1004C4E65 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B712DFD2AE1004C4E65 /* FirebaseCore */; };
 		A66D3B742DFD2AE1004C4E65 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B732DFD2AE1004C4E65 /* FirebaseFirestore */; };
 		A66D3B762DFD2AE1004C4E65 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B752DFD2AE1004C4E65 /* FirebaseMessaging */; };
@@ -69,6 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A661FCA42E00699700176DF0 /* FirebaseMessaging in Frameworks */,
+				A661FCA02E00699700176DF0 /* FirebaseCore in Frameworks */,
+				A661FCA22E00699700176DF0 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +153,9 @@
 			);
 			name = FlowerStudioTests;
 			packageProductDependencies = (
+				A661FC9F2E00699700176DF0 /* FirebaseCore */,
+				A661FCA12E00699700176DF0 /* FirebaseFirestore */,
+				A661FCA32E00699700176DF0 /* FirebaseMessaging */,
 			);
 			productName = FlowerStudioTests;
 			productReference = A6AFA90D2DF58D8B00AE4E14 /* FlowerStudioTests.xctest */;
@@ -416,19 +424,19 @@
 				DEVELOPMENT_TEAM = 5SM27L37HZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
+				INFOPLIST_FILE = FlowerStudio/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.flowerstudio.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iosapp.FlowerStudio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -446,19 +454,19 @@
 				DEVELOPMENT_TEAM = 5SM27L37HZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
+				INFOPLIST_FILE = FlowerStudio/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.flowerstudio.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iosapp.FlowerStudio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -591,7 +599,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-
+		A661FC9F2E00699700176DF0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		A661FCA12E00699700176DF0 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		A661FCA32E00699700176DF0 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		A66D3B712DFD2AE1004C4E65 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

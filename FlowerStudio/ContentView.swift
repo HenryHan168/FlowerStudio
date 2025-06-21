@@ -8,54 +8,340 @@
 import SwiftUI
 import SwiftData
 
+extension Notification.Name {
+    static let switchToCart = Notification.Name("switchToCart")
+    static let switchToOrders = Notification.Name("switchToOrders")
+}
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Query private var studioInfo: [StudioInfo]
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            // 首頁
+            HomeView()
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("首頁")
+                }
+                .tag(0)
+            
+            // 花藝作品
+            ProductListView()
+                .tabItem {
+                    Image(systemName: "leaf.fill")
+                    Text("花藝作品")
+                }
+                .tag(1)
+            
+            // 購物車
+            CartView()
+                .tabItem {
+                    Image(systemName: "cart.fill")
+                    Text("購物車")
+                }
+                .tag(2)
+            
+            // 我的訂單
+            OrderListView()
+                .tabItem {
+                    Image(systemName: "bag.fill")
+                    Text("我的訂單")
+                }
+                .tag(3)
+            
+            // 聯絡我們
+            ContactView()
+                .tabItem {
+                    Image(systemName: "phone.fill")
+                    Text("聯絡我們")
+                }
+                .tag(4)
+        }
+        .accentColor(.pink)
+        .onReceive(NotificationCenter.default.publisher(for: .switchToCart)) { _ in
+            selectedTab = 2 // 切換到購物車標籤頁
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToOrders)) { _ in
+            selectedTab = 3 // 切換到訂單頁面
+        }
+    }
+}
+
+// MARK: - 首頁視圖
+struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var studioInfo: [StudioInfo]
+    @Query(filter: #Predicate<FlowerProduct> { $0.isFeatured }) 
+    private var featuredProducts: [FlowerProduct]
+    
+    var currentStudio: StudioInfo? {
+        studioInfo.first
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // 頂部橫幅
+                    headerSection
+                    
+                    // 工作室資訊
+                    studioInfoSection
+                    
+                    // 精選作品
+                    featuredProductsSection
+                    
+                    // 快速聯絡
+                    quickContactSection
                 }
             }
-        } detail: {
-            Text("Select an item")
+            .navigationTitle("花漾花藝工作室")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+    
+    // 頂部橫幅
+    private var headerSection: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.pink.opacity(0.3), .purple.opacity(0.2)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .frame(height: 200)
+            
+            VStack(spacing: 16) {
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.pink)
+                
+                Text("花漾花藝工作室")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text("專業花藝設計，為您的每個重要時刻增添美麗色彩")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
         }
     }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+    
+    // 工作室資訊區塊
+    private var studioInfoSection: some View {
+        VStack(spacing: 16) {
+            if let studio = currentStudio {
+                HStack(spacing: 20) {
+                    VStack {
+                        Image(systemName: "clock.fill")
+                            .font(.title2)
+                            .foregroundColor(.green)
+                        Text(studio.currentBusinessStatus.displayText)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(Color(studio.currentBusinessStatus.color))
+                    }
+                    
+                    Divider()
+                        .frame(height: 40)
+                    
+                    VStack {
+                        Image(systemName: "phone.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                        Text(studio.formattedPhone)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    
+                    Divider()
+                        .frame(height: 40)
+                    
+                    VStack {
+                        Image(systemName: "location.fill")
+                            .font(.title2)
+                            .foregroundColor(.red)
+                        Text("羅東鎮")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+        }
+        .padding(.top)
+    }
+    
+    // 精選作品區塊
+    private var featuredProductsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("精選作品")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .padding(.horizontal)
+                
+                Spacer()
+                
+                NavigationLink("查看全部", destination: ProductListView())
+                    .font(.subheadline)
+                    .foregroundColor(.pink)
+                    .padding(.horizontal)
+            }
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(featuredProducts) { product in
+                        FeaturedProductCard(product: product)
+                }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .padding(.top)
+    }
+    
+    // 快速聯絡區塊
+    private var quickContactSection: some View {
+        VStack(spacing: 16) {
+            Text("需要協助？")
+                .font(.title3)
+                .fontWeight(.semibold)
+            
+            HStack(spacing: 20) {
+                Button(action: makePhoneCall) {
+                    VStack {
+                        Image(systemName: "phone.fill")
+                            .font(.title2)
+                        Text("立即致電")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 80, height: 80)
+                    .background(Color.green)
+                    .cornerRadius(12)
+                }
+                
+                Button(action: openMaps) {
+                    VStack {
+                        Image(systemName: "map.fill")
+                            .font(.title2)
+                        Text("店面導航")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 80, height: 80)
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+                
+                NavigationLink(destination: ProductListView()) {
+                    VStack {
+                        Image(systemName: "leaf.fill")
+                            .font(.title2)
+                        Text("瀏覽作品")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 80, height: 80)
+                    .background(Color.pink)
+                    .cornerRadius(12)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+        .padding(.vertical)
+    }
+    
+    // 撥打電話功能
+    private func makePhoneCall() {
+        if let studio = currentStudio,
+           let url = URL(string: "tel://\(studio.phone)") {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    // 開啟地圖導航
+    private func openMaps() {
+        if let studio = currentStudio {
+            let encodedAddress = studio.address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            if let url = URL(string: "maps://?q=\(encodedAddress)") {
+                UIApplication.shared.open(url)
             }
         }
     }
 }
 
+// MARK: - 精選作品卡片
+struct FeaturedProductCard: View {
+    let product: FlowerProduct
+    
+    var body: some View {
+        NavigationLink(destination: ProductDetailView(product: product)) {
+            VStack(alignment: .leading, spacing: 8) {
+                // 作品圖片佔位符
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(LinearGradient(
+                        colors: [Color(product.category.color).opacity(0.3), 
+                                Color(product.category.color).opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 160, height: 120)
+                    .overlay(
+                        VStack {
+                            Image(systemName: product.category.iconName)
+                                .font(.title)
+                                .foregroundColor(Color(product.category.color))
+                            Text(product.category.rawValue)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(product.name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(2)
+                        .foregroundColor(.primary)
+                    
+                    Text("NT$ \(Int(product.price))")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.pink)
+                }
+            }
+            .frame(width: 160)
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - 臨時視圖（待實現）
+
+
+
+
+
+
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [FlowerProduct.self, StudioInfo.self], inMemory: true)
 }
