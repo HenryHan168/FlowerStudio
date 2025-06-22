@@ -18,11 +18,15 @@ final class StudioInfo {
     /// 聯絡電話
     var phone: String
     /// 電子郵件
-    var email: String
+    var email: String?
     /// 地址
     var address: String
     /// 營業時間
-    var businessHours: String
+    var businessHours: [BusinessHour]
+    /// 工作室logo圖片名稱
+    var logoImageName: String
+    /// 社群媒體連結
+    var socialMediaLinks: [SocialMediaLink]
     /// 是否提供配送服務
     var deliveryAvailable: Bool
     /// 配送範圍描述
@@ -34,39 +38,30 @@ final class StudioInfo {
     /// 更新時間
     var updatedAt: Date
     
-    // 用戶認證相關
-    var merchantPassword: String  // 業主密碼
-    var lastLoginTime: Date?      // 最後登入時間
-    var loginAttempts: Int        // 登入嘗試次數
-    var isLocked: Bool           // 帳號是否被鎖定
-    
     init(
         name: String = "花漾花藝工作室",
         studioDescription: String = "專業花藝設計，為您的每個重要時刻增添美麗色彩",
         phone: String = "0920663393",
-        email: String = "info@flowerstudio.com",
+        email: String? = nil,
         address: String = "宜蘭縣羅東鎮中山路四段20巷12號",
-        businessHours: String = "週一至週六 09:00-18:00",
+        logoImageName: String = "studio_logo",
         deliveryAvailable: Bool = true,
         deliveryRange: String? = "宜蘭縣羅東鎮及周邊地區",
-        minimumOrderAmount: Double = 500.0,
-        merchantPassword: String = "flower123"  // 預設密碼
+        minimumOrderAmount: Double = 500.0
     ) {
         self.name = name
         self.studioDescription = studioDescription
         self.phone = phone
         self.email = email
         self.address = address
-        self.businessHours = businessHours
+        self.businessHours = BusinessHour.defaultHours()
+        self.logoImageName = logoImageName
+        self.socialMediaLinks = []
         self.deliveryAvailable = deliveryAvailable
         self.deliveryRange = deliveryRange
         self.minimumOrderAmount = minimumOrderAmount
         self.createdAt = Date()
         self.updatedAt = Date()
-        self.merchantPassword = merchantPassword
-        self.lastLoginTime = nil
-        self.loginAttempts = 0
-        self.isLocked = false
     }
     
     /// 更新工作室資訊
@@ -94,16 +89,24 @@ final class StudioInfo {
         let weekday = calendar.component(.weekday, from: now) // 1 = Sunday, 2 = Monday, ...
         let currentTime = calendar.dateComponents([.hour, .minute], from: now)
         
-        // 簡化的營業狀態判斷，基於businessHours字符串
-        // 在實際應用中，這裡可以根據具體的營業時間邏輯來判斷
-        let currentHour = currentTime.hour ?? 0
-        
-        // 假設營業時間為 9:00-18:00
-        if currentHour >= 9 && currentHour < 18 {
-            return .open
-        } else {
-            return .closed
+        // 找到今天的營業時間
+        if let todayHours = businessHours.first(where: { $0.dayOfWeek == weekday }) {
+            if todayHours.isClosed {
+                return .closed
+            }
+            
+            let currentMinutes = (currentTime.hour ?? 0) * 60 + (currentTime.minute ?? 0)
+            let openMinutes = todayHours.openHour * 60 + todayHours.openMinute
+            let closeMinutes = todayHours.closeHour * 60 + todayHours.closeMinute
+            
+            if currentMinutes >= openMinutes && currentMinutes < closeMinutes {
+                return .open
+            } else {
+                return .closed
+            }
         }
+        
+        return .closed
     }
 }
 
@@ -216,5 +219,129 @@ enum BusinessStatus {
         case .closed:
             return "red"
         }
+    }
+}
+
+/// 使用者角色枚舉
+enum UserRole: String, CaseIterable, Codable {
+    case customer = "customer"      // 一般顧客
+    case merchant = "merchant"      // 業主/商家
+    
+    var displayName: String {
+        switch self {
+        case .customer:
+            return "顧客"
+        case .merchant:
+            return "業主"
+        }
+    }
+    
+    var canAccessMerchantFeatures: Bool {
+        return self == .merchant
+    }
+}
+
+/// 使用者管理類別
+class UserManager: ObservableObject {
+    static let shared = UserManager()
+    
+    @Published var currentUserRole: UserRole = .customer
+    @Published var isLoggedIn: Bool = false
+    @Published var isMerchantAuthenticated: Bool = false  // 業主認證狀態
+    
+    private let userRoleKey = "user_role"
+    private let isLoggedInKey = "is_logged_in"
+    private let merchantAuthKey = "merchant_authenticated"
+    
+    // 業主驗證設定 - 實際應用中應該從安全的後端獲取
+    private let merchantPassword = "flower2024"  // 預設業主密碼
+    private let merchantPIN = "0620"            // 預設業主PIN碼（可用電話後4位）
+    
+    private init() {
+        loadUserRole()
+    }
+    
+    /// 載入已儲存的使用者角色
+    private func loadUserRole() {
+        if let savedRole = UserDefaults.standard.string(forKey: userRoleKey),
+           let role = UserRole(rawValue: savedRole) {
+            currentUserRole = role
+        }
+        isLoggedIn = UserDefaults.standard.bool(forKey: isLoggedInKey)
+        isMerchantAuthenticated = UserDefaults.standard.bool(forKey: merchantAuthKey)
+        
+        // 如果是業主角色但未認證，降級為顧客
+        if currentUserRole == .merchant && !isMerchantAuthenticated {
+            currentUserRole = .customer
+            UserDefaults.standard.set(UserRole.customer.rawValue, forKey: userRoleKey)
+        }
+    }
+    
+    /// 設定使用者角色
+    func setUserRole(_ role: UserRole) {
+        currentUserRole = role
+        UserDefaults.standard.set(role.rawValue, forKey: userRoleKey)
+        print("✅ 使用者角色已設定為: \(role.displayName)")
+    }
+    
+    /// 驗證業主身份（PIN碼）
+    func authenticateMerchantWithPIN(_ pin: String) -> Bool {
+        if pin == merchantPIN {
+            isMerchantAuthenticated = true
+            UserDefaults.standard.set(true, forKey: merchantAuthKey)
+            setUserRole(.merchant)
+            isLoggedIn = true
+            UserDefaults.standard.set(true, forKey: isLoggedInKey)
+            print("✅ 業主PIN碼驗證成功")
+            return true
+        } else {
+            print("❌ 業主PIN碼驗證失敗")
+            return false
+        }
+    }
+    
+    /// 驗證業主身份（密碼）
+    func authenticateMerchantWithPassword(_ password: String) -> Bool {
+        if password == merchantPassword {
+            isMerchantAuthenticated = true
+            UserDefaults.standard.set(true, forKey: merchantAuthKey)
+            setUserRole(.merchant)
+            isLoggedIn = true
+            UserDefaults.standard.set(true, forKey: isLoggedInKey)
+            print("✅ 業主密碼驗證成功")
+            return true
+        } else {
+            print("❌ 業主密碼驗證失敗")
+            return false
+        }
+    }
+    
+    /// 切換到顧客模式（無需驗證）
+    func switchToCustomer() {
+        setUserRole(.customer)
+        isLoggedIn = true
+        UserDefaults.standard.set(true, forKey: isLoggedInKey)
+        // 不清除業主認證狀態，方便再次切換
+    }
+    
+    /// 登出並清除所有認證狀態
+    func logout() {
+        isLoggedIn = false
+        isMerchantAuthenticated = false
+        currentUserRole = .customer
+        UserDefaults.standard.set(false, forKey: isLoggedInKey)
+        UserDefaults.standard.set(false, forKey: merchantAuthKey)
+        UserDefaults.standard.set(UserRole.customer.rawValue, forKey: userRoleKey)
+        print("✅ 使用者已登出，所有認證狀態已清除")
+    }
+    
+    /// 檢查是否有業主權限
+    var hasMerchantAccess: Bool {
+        return currentUserRole.canAccessMerchantFeatures && isMerchantAuthenticated
+    }
+    
+    /// 獲取驗證提示文字
+    var authenticationHint: String {
+        "請輸入業主PIN碼（訂購專線後4位數字）"
     }
 } 

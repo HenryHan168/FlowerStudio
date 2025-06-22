@@ -205,7 +205,7 @@ class FirebaseManager: NSObject, ObservableObject {
                     "price": product.price,
                     "category": product.category.rawValue,
                     "imageName": product.imageName,
-                    "imageURL": product.imageURL ?? "",
+                    "imageURL": product.imageURL,
                     "isFeatured": product.isFeatured,
                     "isCustomizable": product.isCustomizable,
                     "createdAt": Timestamp(date: product.createdAt),
@@ -235,9 +235,24 @@ class FirebaseManager: NSObject, ObservableObject {
             "phone": studioInfo.phone,
             "email": studioInfo.email ?? "",
             "address": studioInfo.address,
-            "businessHours": studioInfo.businessHours,
-            "socialMediaLinks": [] as [[String: Any]],
-            "logoImageName": "",
+            "businessHours": studioInfo.businessHours.map { hour in
+                [
+                    "dayOfWeek": hour.dayOfWeek,
+                    "openHour": hour.openHour,
+                    "openMinute": hour.openMinute,
+                    "closeHour": hour.closeHour,
+                    "closeMinute": hour.closeMinute,
+                    "isClosed": hour.isClosed
+                ]
+            },
+            "socialMediaLinks": studioInfo.socialMediaLinks.map { link in
+                [
+                    "platform": link.platform.rawValue,
+                    "url": link.url,
+                    "displayName": link.displayName
+                ]
+            },
+            "logoImageName": studioInfo.logoImageName,
             "deliveryAvailable": studioInfo.deliveryAvailable,
             "deliveryRange": studioInfo.deliveryRange ?? "",
             "minimumOrderAmount": studioInfo.minimumOrderAmount,

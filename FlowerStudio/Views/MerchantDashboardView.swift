@@ -11,7 +11,6 @@ import SwiftData
 struct MerchantDashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var notificationManager: LocalNotificationManager
-    @StateObject private var authManager = AuthManager.shared
     @Query(sort: \Order.createdAt, order: .reverse) private var allOrders: [Order]
     
     @State private var selectedStatus: OrderStatus = .pending
@@ -61,13 +60,6 @@ struct MerchantDashboardView: View {
             .navigationTitle("業主儀表板")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("登出") {
-                        authManager.logout()
-                    }
-                    .foregroundColor(.red)
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("📊") {
                         sendDailySummaryNotification()

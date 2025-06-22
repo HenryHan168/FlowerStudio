@@ -18,8 +18,7 @@ struct ContentView: View {
     @Query private var studioInfo: [StudioInfo]
     @State private var selectedTab = 0
     @StateObject private var contactManager = ContactManager.shared
-    @StateObject private var authManager = AuthManager.shared
-    @State private var showingLoginSheet = false
+    @StateObject private var userManager = UserManager.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -39,60 +38,51 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            // 購物車
-            CartView()
-                .tabItem {
-                    Image(systemName: "cart.fill")
-                    Text("購物車")
-                }
-                .tag(2)
+            // 購物車（只對顧客顯示）
+            if !userManager.hasMerchantAccess {
+                CartView()
+                    .tabItem {
+                        Image(systemName: "cart.fill")
+                        Text("購物車")
+                    }
+                    .tag(2)
+            }
             
             // 我的訂單
             OrderListView()
                 .tabItem {
                     Image(systemName: "bag.fill")
-                    Text("我的訂單")
+                    Text(userManager.hasMerchantAccess ? "所有訂單" : "我的訂單")
                 }
                 .tag(3)
             
-            // 業主管理/More頁面
-            if authManager.isMerchant() {
+            // 業主儀表板（只對業主顯示）
+            if userManager.hasMerchantAccess {
                 MerchantDashboardView()
                     .tabItem {
                         Image(systemName: "chart.bar.fill")
                         Text("業主管理")
                     }
                     .tag(4)
-            } else {
-                MoreView(showingLoginSheet: $showingLoginSheet)
-                    .tabItem {
-                        Image(systemName: "ellipsis")
-                        Text("More")
-                    }
-                    .tag(4)
             }
             
-            // 聯絡我們
-            ContactView()
+            // 聯絡我們 & 更多功能
+            MoreView()
                 .tabItem {
-                    Image(systemName: "phone.fill")
-                    Text("聯絡我們")
+                    Image(systemName: "ellipsis.circle.fill")
+                    Text("更多")
                 }
                 .tag(5)
         }
         .accentColor(.pink)
-        .sheet(isPresented: $showingLoginSheet) {
-            LoginView()
-        }
         .onReceive(NotificationCenter.default.publisher(for: .switchToCart)) { _ in
-            selectedTab = 2 // 切換到購物車標籤頁
+            selectedTab = userManager.hasMerchantAccess ? 3 : 2 // 根據角色調整標籤頁索引
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToOrders)) { _ in
             selectedTab = 3 // 切換到訂單頁面
         }
         .onAppear {
             contactManager.setModelContext(modelContext)
-            authManager.setModelContext(modelContext)
         }
     }
 }
@@ -101,6 +91,7 @@ struct ContentView: View {
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var notificationManager: LocalNotificationManager
+    @StateObject private var userManager = UserManager.shared
     @Query private var studioInfo: [StudioInfo]
     @Query(filter: #Predicate<FlowerProduct> { $0.isFeatured }) 
     private var featuredProducts: [FlowerProduct]
@@ -129,14 +120,29 @@ struct HomeView: View {
             .navigationTitle("花漾花藝工作室")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("💼") {
-                        notificationManager.sendTestMerchantNotification()
+                // 只在業主模式顯示測試按鈕
+                if userManager.hasMerchantAccess {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("💼") {
+                            notificationManager.sendTestMerchantNotification()
+                        }
                     }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("🧪") {
-                        notificationManager.sendTestNotification()
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("🧪") {
+                            notificationManager.sendTestNotification()
+                        }
+                    }
+                } else {
+                    // 顧客模式顯示身份標識
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        HStack {
+                            Image(systemName: "person.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            Text("顧客")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
@@ -430,13 +436,294 @@ struct FeaturedProductCard: View {
     }
 }
 
-// MARK: - 臨時視圖（待實現）
+// MARK: - 更多功能視圖
+struct MoreView: View {
+    @StateObject private var userManager = UserManager.shared
+    @State private var showingRoleSwitchAlert = false
+    @State private var showingAboutAlert = false
+    @State private var showingMerchantAuth = false
+    @State private var showingAuthFailedAlert = false
+    @State private var pinInput = ""
+    @State private var passwordInput = ""
+    @State private var authMethod: AuthMethod = .pin
+    
+    enum AuthMethod {
+        case pin, password
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                // 使用者資訊區塊
+                Section {
+                    HStack {
+                        Circle()
+                            .fill(userManager.hasMerchantAccess ? Color.purple : Color.blue)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Image(systemName: userManager.hasMerchantAccess ? "crown.fill" : "person.fill")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 18))
+                            )
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("當前身份")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(userManager.currentUserRole.displayName)
+                                .font(.headline)
+                                .fontWeight(.medium)
+                            
+                            if userManager.hasMerchantAccess {
+                                Text("已驗證")
+                                    .font(.caption2)
+                                    .foregroundColor(.green)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button("切換") {
+                            showingRoleSwitchAlert = true
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(8)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                // 功能選項
+                Section("功能") {
+                    NavigationLink(destination: ContactView()) {
+                        Label("聯絡我們", systemImage: "phone.fill")
+                    }
+                    
+                    if userManager.hasMerchantAccess {
+                        NavigationLink(destination: MerchantDashboardView()) {
+                            Label("業主儀表板", systemImage: "chart.bar.fill")
+                        }
+                    }
+                    
+                    Button(action: {
+                        showingAboutAlert = true
+                    }) {
+                        Label("關於應用", systemImage: "info.circle.fill")
+                    }
+                    .foregroundColor(.primary)
+                }
+                
+                // 安全設定
+                if userManager.hasMerchantAccess {
+                    Section("安全設定") {
+                        Button(action: {
+                            userManager.logout()
+                        }) {
+                            Label("登出並清除認證", systemImage: "lock.fill")
+                        }
+                        .foregroundColor(.red)
+                    }
+                }
+                
+                // 開發測試功能（開發階段使用）
+                Section("開發測試") {
+                    Button("🧪 測試顧客通知") {
+                        LocalNotificationManager.shared.sendTestNotification()
+                    }
+                    .foregroundColor(.blue)
+                    
+                    if userManager.hasMerchantAccess {
+                        Button("💼 測試業主通知") {
+                            LocalNotificationManager.shared.sendTestMerchantNotification()
+                        }
+                        .foregroundColor(.purple)
+                    }
+                }
+            }
+            .navigationTitle("更多")
+            .navigationBarTitleDisplayMode(.large)
+        }
+        .alert("切換使用者身份", isPresented: $showingRoleSwitchAlert) {
+            Button("切換為顧客") {
+                userManager.switchToCustomer()
+            }
+            Button("切換為業主") {
+                // 如果已經認證過，直接切換；否則需要驗證
+                if userManager.isMerchantAuthenticated {
+                    userManager.setUserRole(.merchant)
+                } else {
+                    showingMerchantAuth = true
+                }
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("當前身份：\(userManager.currentUserRole.displayName)\n\n請選擇要切換的身份類型。")
+        }
+        .alert("關於花漾花藝工作室", isPresented: $showingAboutAlert) {
+            Button("確定") { }
+        } message: {
+            Text("花漾花藝工作室 App v1.0\n\n專業花藝設計，為您的每個重要時刻增添美麗色彩。\n\n© 2024 花漾花藝工作室")
+        }
+        .alert("驗證失敗", isPresented: $showingAuthFailedAlert) {
+            Button("重試") {
+                showingMerchantAuth = true
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("PIN碼或密碼錯誤，請重試。")
+        }
+        .sheet(isPresented: $showingMerchantAuth) {
+            MerchantAuthView(
+                pinInput: $pinInput,
+                passwordInput: $passwordInput,
+                authMethod: $authMethod,
+                onAuthenticate: { success in
+                    if success {
+                        showingMerchantAuth = false
+                        pinInput = ""
+                        passwordInput = ""
+                    } else {
+                        showingMerchantAuth = false
+                        showingAuthFailedAlert = true
+                        pinInput = ""
+                        passwordInput = ""
+                    }
+                },
+                onCancel: {
+                    showingMerchantAuth = false
+                    pinInput = ""
+                    passwordInput = ""
+                }
+            )
+        }
+    }
+}
 
-
-
-
-
-
+// MARK: - 業主驗證視圖
+struct MerchantAuthView: View {
+    @StateObject private var userManager = UserManager.shared
+    @Binding var pinInput: String
+    @Binding var passwordInput: String
+    @Binding var authMethod: MoreView.AuthMethod
+    let onAuthenticate: (Bool) -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // 標題區塊
+                VStack(spacing: 16) {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.purple)
+                    
+                    Text("業主身份驗證")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    Text("請輸入業主憑證以訪問管理功能")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                
+                // 驗證方式選擇
+                Picker("驗證方式", selection: $authMethod) {
+                    Text("PIN碼").tag(MoreView.AuthMethod.pin)
+                    Text("密碼").tag(MoreView.AuthMethod.password)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+                
+                // 輸入區塊
+                VStack(spacing: 16) {
+                    if authMethod == .pin {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("業主PIN碼")
+                                .font(.headline)
+                            
+                            Text("請輸入訂購專線後4位數字")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            SecureField("PIN碼 (4位數字)", text: $pinInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .keyboardType(.numberPad)
+                                .textContentType(.oneTimeCode)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("業主密碼")
+                                .font(.headline)
+                            
+                            Text("請輸入業主密碼")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            SecureField("密碼", text: $passwordInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textContentType(.password)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                
+                // 按鈕區塊
+                VStack(spacing: 12) {
+                    Button("驗證") {
+                        let success: Bool
+                        if authMethod == .pin {
+                            success = userManager.authenticateMerchantWithPIN(pinInput)
+                        } else {
+                            success = userManager.authenticateMerchantWithPassword(passwordInput)
+                        }
+                        onAuthenticate(success)
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        (authMethod == .pin ? !pinInput.isEmpty : !passwordInput.isEmpty) 
+                        ? Color.purple : Color.gray
+                    )
+                    .cornerRadius(12)
+                    .disabled(authMethod == .pin ? pinInput.isEmpty : passwordInput.isEmpty)
+                    
+                    Button("取消") {
+                        onCancel()
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+                
+                Spacer()
+                
+                // 提示訊息
+                VStack(spacing: 8) {
+                    Text("安全提示")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fontWeight(.medium)
+                    
+                    Text("此驗證確保只有授權人員可以訪問業主管理功能")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
+        }
+    }
+}
 
 #Preview {
     ContentView()

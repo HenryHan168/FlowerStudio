@@ -112,14 +112,16 @@ struct ContactView: View {
                         makePhoneCall()
                     }
                     
-                    ContactMethodCard(
-                        icon: "envelope.fill",
-                        title: "電子郵件",
-                        content: studio.email,
-                        description: "點擊發送郵件",
-                        color: .blue
-                    ) {
-                        sendEmail(to: studio.email)
+                    if let email = studio.email {
+                        ContactMethodCard(
+                            icon: "envelope.fill",
+                            title: "電子郵件",
+                            content: email,
+                            description: "點擊發送郵件",
+                            color: .blue
+                        ) {
+                            sendEmail(to: email)
+                        }
                     }
                     
                     ContactMethodCard(
@@ -190,18 +192,9 @@ struct ContactView: View {
             
             if let studio = currentStudio {
                 VStack(spacing: 8) {
-                    HStack {
-                        Image(systemName: "clock.fill")
-                            .foregroundColor(.orange)
-                        Text("營業時間")
-                            .font(.headline)
-                        Spacer()
+                    ForEach(studio.businessHours.sorted(by: { $0.dayOfWeek < $1.dayOfWeek }), id: \.dayOfWeek) { hour in
+                        BusinessHourRow(businessHour: hour)
                     }
-                    
-                    Text(studio.businessHours)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding()
                 .background(Color(.systemGray6))
