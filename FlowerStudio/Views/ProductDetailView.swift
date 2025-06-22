@@ -82,14 +82,55 @@ struct ProductDetailView: View {
                 ))
                 .frame(height: 250)
             
-            VStack(spacing: 16) {
-                Image(systemName: product.category.iconName)
-                    .font(.system(size: 80))
-                    .foregroundColor(Color(product.category.color))
-                
-                Text(product.category.rawValue)
-                    .font(.headline)
-                    .foregroundColor(.secondary)
+            // 載入網路圖片
+            if let imageURL = product.imageURL, let url = URL(string: imageURL) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 250)
+                            .clipped()
+                    case .failure(_):
+                        // 載入失敗，顯示備用圖標
+                        VStack(spacing: 16) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
+                            Text("圖片載入失敗")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                    case .empty:
+                        // 載入中顯示的佔位符
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Color(product.category.color)))
+                                .scaleEffect(1.5)
+                            Text("載入中...")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .cornerRadius(16)
+                .onAppear {
+                    print("📄 詳情頁載入圖片: \(product.name) - \(imageURL)")
+                }
+            } else {
+                // 備用的SF Symbol圖標
+                VStack(spacing: 16) {
+                    Image(systemName: product.category.iconName)
+                        .font(.system(size: 80))
+                        .foregroundColor(Color(product.category.color))
+                    
+                    Text(product.category.rawValue)
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
             }
             
             // 精選和可客製標籤
@@ -386,6 +427,9 @@ struct OrderFormView: View {
     let quantity: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var notificationManager: LocalNotificationManager
+    
+    @StateObject private var contactManager = ContactManager.shared
     
     @State private var customerName = ""
     @State private var customerPhone = ""
@@ -400,6 +444,10 @@ struct OrderFormView: View {
     @State private var notes = ""
     @State private var showingSuccessAlert = false
     @State private var orderNumber = ""
+    
+    // 聯絡人選擇器狀態
+    @State private var showingCustomerContactPicker = false
+    @State private var showingRecipientContactPicker = false
     
     private let timeSlots = ["09:00-12:00", "12:00-15:00", "15:00-18:00", "18:00-21:00"]
     
@@ -450,6 +498,20 @@ struct OrderFormView: View {
             } message: {
                 Text("您的訂單編號：\(orderNumber)\n我們會盡快與您聯絡確認訂單詳情。")
             }
+            .sheet(isPresented: $showingCustomerContactPicker) {
+                ContactPickerView(contactType: .customer) { contact in
+                    fillCustomerInfo(from: contact)
+                }
+            }
+            .sheet(isPresented: $showingRecipientContactPicker) {
+                ContactPickerView(contactType: .recipient) { contact in
+                    fillRecipientInfo(from: contact)
+                }
+            }
+            .onAppear {
+                contactManager.setModelContext(modelContext)
+                loadDefaultContacts()
+            }
         }
     }
     
@@ -495,8 +557,20 @@ struct OrderFormView: View {
     // 客戶資訊
     private var customerInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("客戶資訊")
-                .font(.headline)
+            HStack {
+                Text("客戶資訊")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Button {
+                    showingCustomerContactPicker = true
+                } label: {
+                    Label("常用聯絡人", systemImage: "person.crop.circle.badge.plus")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
+            }
             
             VStack(spacing: 12) {
                 TextField("姓名 *", text: $customerName)
@@ -510,14 +584,41 @@ struct OrderFormView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .keyboardType(.emailAddress)
             }
+            
+            // 顯示常用聯絡人快速選擇
+            if !contactManager.getContacts(for: .customer).isEmpty {
+                quickContactSelection(for: .customer)
+            }
         }
     }
     
     // 收件人資訊
     private var recipientInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("收件人資訊")
-                .font(.headline)
+            HStack {
+                Text("收件人資訊")
+                    .font(.headline)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Button {
+                        copyCustomerToRecipient()
+                    } label: {
+                        Label("同訂購人", systemImage: "arrow.down.circle")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Button {
+                        showingRecipientContactPicker = true
+                    } label: {
+                        Label("常用聯絡人", systemImage: "person.crop.circle.badge.plus")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
             
             VStack(spacing: 12) {
                 TextField("收件人姓名 *", text: $recipientName)
@@ -526,6 +627,11 @@ struct OrderFormView: View {
                 TextField("收件人電話 *", text: $recipientPhone)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .keyboardType(.phonePad)
+            }
+            
+            // 顯示常用聯絡人快速選擇
+            if !contactManager.getContacts(for: .recipient).isEmpty {
+                quickContactSelection(for: .recipient)
             }
         }
     }
@@ -620,57 +726,113 @@ struct OrderFormView: View {
             try modelContext.save()
             orderNumber = newOrder.orderNumber
             
+            // 自動新增聯絡人到常用清單
+            contactManager.quickAddFromOrder(
+                customerName: customerName,
+                customerPhone: customerPhone,
+                customerEmail: customerEmail.isEmpty ? nil : customerEmail,
+                recipientName: recipientName,
+                recipientPhone: recipientPhone,
+                deliveryAddress: selectedDeliveryMethod == .delivery ? deliveryAddress : nil
+            )
+            
             // 上傳訂單到 Firebase（非阻塞）
             Task {
-                await uploadOrderToFirebase(newOrder)
+                do {
+                    try await FirebaseManager.shared.uploadOrder(newOrder)
+                    print("🔥 訂單 \(newOrder.orderNumber) 已成功上傳到 Firebase")
+                } catch {
+                    print("❌ 上傳訂單到 Firebase 失敗: \(error)")
+                }
             }
             
+            // 發送本地推播通知
+            notificationManager.sendOrderConfirmationNotification(
+                orderNumber: newOrder.orderNumber,
+                customerName: customerName
+            )
+            
             showingSuccessAlert = true
+            print("✅ 訂單 \(newOrder.orderNumber) 已成功建立")
         } catch {
             print("Failed to save order: \(error)")
             // 這裡可以顯示錯誤訊息
         }
     }
     
-    // 上傳訂單到Firebase
-    private func uploadOrderToFirebase(_ order: Order) async {
-        do {
-            // 將Order轉換為Firebase格式
-            let firebaseOrderData: [String: Any] = [
-                "id": order.id.uuidString,
-                "orderNumber": order.orderNumber,
-                "customerName": order.customerName,
-                "customerPhone": order.customerPhone,
-                "customerEmail": order.customerEmail ?? "",
-                "productName": order.productName,
-                "quantity": order.quantity,
-                "unitPrice": order.unitPrice,
-                "totalAmount": order.totalAmount,
-                "customRequirements": order.customRequirements ?? "",
-                "recipientName": order.recipientName,
-                "recipientPhone": order.recipientPhone,
-                "deliveryMethod": order.deliveryMethod.rawValue,
-                "deliveryAddress": order.deliveryAddress ?? "",
-                "preferredDate": order.preferredDate,
-                "preferredTime": order.preferredTime,
-                "notes": order.notes ?? "",
-                "orderStatus": order.status.rawValue,
-                "createdAt": order.createdAt,
-                "updatedAt": order.updatedAt
-            ]
-            
-            // 上傳到Firebase
-            try await FirebaseManager.shared.uploadOrderData(
-                orderId: order.id.uuidString,
-                orderData: firebaseOrderData,
-                orderNumber: order.orderNumber,
-                customerName: order.customerName,
-                totalAmount: order.totalAmount
-            )
-            
-            print("✅ 訂單 \(order.orderNumber) 已成功上傳到 Firebase")
-        } catch {
-            print("❌ 上傳訂單 \(order.orderNumber) 到 Firebase 失敗: \(error)")
+    // MARK: - 聯絡人相關功能
+    
+    /// 載入預設聯絡人
+    private func loadDefaultContacts() {
+        if let defaultCustomer = contactManager.getDefaultContact(for: .customer) {
+            fillCustomerInfo(from: defaultCustomer)
+        }
+        
+        if let defaultRecipient = contactManager.getDefaultContact(for: .recipient) {
+            fillRecipientInfo(from: defaultRecipient)
+        }
+    }
+    
+    /// 填入客戶資訊
+    private func fillCustomerInfo(from contact: Contact) {
+        customerName = contact.name
+        customerPhone = contact.phone
+        customerEmail = contact.email ?? ""
+    }
+    
+    /// 填入收件人資訊
+    private func fillRecipientInfo(from contact: Contact) {
+        recipientName = contact.name
+        recipientPhone = contact.phone
+        if let address = contact.address, selectedDeliveryMethod == .delivery {
+            deliveryAddress = address
+        }
+    }
+    
+    /// 複製訂購人資訊到收件人
+    private func copyCustomerToRecipient() {
+        recipientName = customerName
+        recipientPhone = customerPhone
+    }
+    
+    /// 常用聯絡人快速選擇
+    private func quickContactSelection(for type: ContactType) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(contactManager.getContacts(for: type).prefix(3), id: \.id) { contact in
+                    Button {
+                        if type == .customer || contact.type == .both {
+                            fillCustomerInfo(from: contact)
+                            contactManager.useContact(contact)
+                        } else {
+                            fillRecipientInfo(from: contact)
+                            contactManager.useContact(contact)
+                        }
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: contact.type.iconName)
+                                .font(.caption)
+                                .foregroundColor(Color(contact.type.color))
+                            
+                            Text(contact.name)
+                                .font(.caption2)
+                                .lineLimit(1)
+                            
+                            if contact.isDefault {
+                                Image(systemName: "star.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.yellow)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                    .foregroundColor(.primary)
+                }
+            }
+            .padding(.horizontal)
         }
     }
 }

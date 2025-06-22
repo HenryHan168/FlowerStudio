@@ -178,14 +178,54 @@ struct ProductCard: View {
                         ))
                         .frame(height: 140)
                     
-                    VStack(spacing: 8) {
-                        Image(systemName: product.category.iconName)
-                            .font(.title)
-                            .foregroundColor(Color(product.category.color))
-                        
-                        Text(product.category.rawValue)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                    // 載入網路圖片
+                    if let imageURL = product.imageURL, let url = URL(string: imageURL) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 140)
+                                    .clipped()
+                            case .failure(_):
+                                // 載入失敗，顯示備用圖標
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo")
+                                        .font(.title)
+                                        .foregroundColor(.gray)
+                                    Text("圖片載入失敗")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            case .empty:
+                                // 載入中顯示的佔位符
+                                VStack(spacing: 8) {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: Color(product.category.color)))
+                                    Text("載入中...")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .cornerRadius(12)
+                        .onAppear {
+                            print("🖼️ 載入圖片: \(product.name) - \(imageURL)")
+                        }
+                    } else {
+                        // 備用的SF Symbol圖標
+                        VStack(spacing: 8) {
+                            Image(systemName: product.category.iconName)
+                                .font(.title)
+                                .foregroundColor(Color(product.category.color))
+                            
+                            Text(product.category.rawValue)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
                     // 精選標籤
@@ -205,42 +245,40 @@ struct ProductCard: View {
                         }
                         .padding(8)
                     }
+                    
+                    // 可客製標籤
+                    if product.isCustomizable {
+                        VStack {
+                            HStack {
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.orange)
+                                    .cornerRadius(8)
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                        .padding(8)
+                    }
                 }
                 
                 // 產品資訊
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(product.name)
                         .font(.subheadline)
-                        .fontWeight(.semibold)
+                        .fontWeight(.medium)
                         .lineLimit(2)
                         .foregroundColor(.primary)
                     
-                    Text(product.productDescription)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(3)
+                    Text("NT$ \(Int(product.price))")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.pink)
                     
-                    HStack {
-                        Text("NT$ \(Int(product.price))")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.pink)
-                        
-                        Spacer()
-                        
-                        if product.isCustomizable {
-                            Text("可客製")
-                                .font(.caption2)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.2))
-                                .foregroundColor(.orange)
-                                .cornerRadius(4)
-                        }
-                    }
-                    
-                    // 製作天數
-                    HStack {
+                    HStack(spacing: 4) {
                         Image(systemName: "clock")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -252,8 +290,8 @@ struct ProductCard: View {
             }
             .padding()
             .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(PlainButtonStyle())
     }

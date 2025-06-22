@@ -23,6 +23,8 @@ final class FlowerProduct {
     var category: ProductCategory
     /// 圖片名稱（存儲在Assets中）
     var imageName: String
+    /// 網路圖片URL
+    var imageURL: String?
     /// 是否可客製化
     var isCustomizable: Bool
     /// 製作天數
@@ -38,6 +40,7 @@ final class FlowerProduct {
         price: Double,
         category: ProductCategory,
         imageName: String,
+        imageURL: String? = nil,
         isCustomizable: Bool = false,
         preparationDays: Int = 1,
         isFeatured: Bool = false
@@ -48,6 +51,7 @@ final class FlowerProduct {
         self.price = price
         self.category = category
         self.imageName = imageName
+        self.imageURL = imageURL
         self.isCustomizable = isCustomizable
         self.preparationDays = preparationDays
         self.createdAt = Date()

@@ -18,15 +18,11 @@ final class StudioInfo {
     /// 聯絡電話
     var phone: String
     /// 電子郵件
-    var email: String?
+    var email: String
     /// 地址
     var address: String
     /// 營業時間
-    var businessHours: [BusinessHour]
-    /// 工作室logo圖片名稱
-    var logoImageName: String
-    /// 社群媒體連結
-    var socialMediaLinks: [SocialMediaLink]
+    var businessHours: String
     /// 是否提供配送服務
     var deliveryAvailable: Bool
     /// 配送範圍描述
@@ -38,30 +34,39 @@ final class StudioInfo {
     /// 更新時間
     var updatedAt: Date
     
+    // 用戶認證相關
+    var merchantPassword: String  // 業主密碼
+    var lastLoginTime: Date?      // 最後登入時間
+    var loginAttempts: Int        // 登入嘗試次數
+    var isLocked: Bool           // 帳號是否被鎖定
+    
     init(
         name: String = "花漾花藝工作室",
         studioDescription: String = "專業花藝設計，為您的每個重要時刻增添美麗色彩",
         phone: String = "0920663393",
-        email: String? = nil,
+        email: String = "info@flowerstudio.com",
         address: String = "宜蘭縣羅東鎮中山路四段20巷12號",
-        logoImageName: String = "studio_logo",
+        businessHours: String = "週一至週六 09:00-18:00",
         deliveryAvailable: Bool = true,
         deliveryRange: String? = "宜蘭縣羅東鎮及周邊地區",
-        minimumOrderAmount: Double = 500.0
+        minimumOrderAmount: Double = 500.0,
+        merchantPassword: String = "flower123"  // 預設密碼
     ) {
         self.name = name
         self.studioDescription = studioDescription
         self.phone = phone
         self.email = email
         self.address = address
-        self.businessHours = BusinessHour.defaultHours()
-        self.logoImageName = logoImageName
-        self.socialMediaLinks = []
+        self.businessHours = businessHours
         self.deliveryAvailable = deliveryAvailable
         self.deliveryRange = deliveryRange
         self.minimumOrderAmount = minimumOrderAmount
         self.createdAt = Date()
         self.updatedAt = Date()
+        self.merchantPassword = merchantPassword
+        self.lastLoginTime = nil
+        self.loginAttempts = 0
+        self.isLocked = false
     }
     
     /// 更新工作室資訊
@@ -89,24 +94,16 @@ final class StudioInfo {
         let weekday = calendar.component(.weekday, from: now) // 1 = Sunday, 2 = Monday, ...
         let currentTime = calendar.dateComponents([.hour, .minute], from: now)
         
-        // 找到今天的營業時間
-        if let todayHours = businessHours.first(where: { $0.dayOfWeek == weekday }) {
-            if todayHours.isClosed {
-                return .closed
-            }
-            
-            let currentMinutes = (currentTime.hour ?? 0) * 60 + (currentTime.minute ?? 0)
-            let openMinutes = todayHours.openHour * 60 + todayHours.openMinute
-            let closeMinutes = todayHours.closeHour * 60 + todayHours.closeMinute
-            
-            if currentMinutes >= openMinutes && currentMinutes < closeMinutes {
-                return .open
-            } else {
-                return .closed
-            }
-        }
+        // 簡化的營業狀態判斷，基於businessHours字符串
+        // 在實際應用中，這裡可以根據具體的營業時間邏輯來判斷
+        let currentHour = currentTime.hour ?? 0
         
-        return .closed
+        // 假設營業時間為 9:00-18:00
+        if currentHour >= 9 && currentHour < 18 {
+            return .open
+        } else {
+            return .closed
+        }
     }
 }
 

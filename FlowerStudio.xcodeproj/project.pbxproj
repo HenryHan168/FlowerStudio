@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-
-		A66D3B722DFD2AE1004C4E65 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B712DFD2AE1004C4E65 /* FirebaseCore */; };
-		A66D3B742DFD2AE1004C4E65 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B732DFD2AE1004C4E65 /* FirebaseFirestore */; };
-		A66D3B762DFD2AE1004C4E65 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A66D3B752DFD2AE1004C4E65 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,9 +55,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A66D3B762DFD2AE1004C4E65 /* FirebaseMessaging in Frameworks */,
-				A66D3B722DFD2AE1004C4E65 /* FirebaseCore in Frameworks */,
-				A66D3B742DFD2AE1004C4E65 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -122,9 +115,6 @@
 			);
 			name = FlowerStudio;
 			packageProductDependencies = (
-				A66D3B712DFD2AE1004C4E65 /* FirebaseCore */,
-				A66D3B732DFD2AE1004C4E65 /* FirebaseFirestore */,
-				A66D3B752DFD2AE1004C4E65 /* FirebaseMessaging */,
 			);
 			productName = FlowerStudio;
 			productReference = A6AFA8FE2DF58D8700AE4E14 /* FlowerStudio.app */;
@@ -416,7 +406,6 @@
 				DEVELOPMENT_TEAM = 5SM27L37HZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -446,7 +435,6 @@
 				DEVELOPMENT_TEAM = 5SM27L37HZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -591,21 +579,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-
-		A66D3B712DFD2AE1004C4E65 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseCore;
 		};
-		A66D3B732DFD2AE1004C4E65 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
 		};
-		A66D3B752DFD2AE1004C4E65 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A66D3B702DFD2AE1004C4E65 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

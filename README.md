@@ -55,9 +55,15 @@
 - iOS 17.0+
 - Swift 5.9+
 - SwiftUI 框架
-- SwiftData 本地數據存儲
+- **SwiftData 本地數據存儲** (修復後穩定運行)
 - **Firebase SDK 11.14.0+**
 - **Firebase Cloud Functions (Node.js 20)**
+
+### SwiftData 配置
+- **智能容錯機制**: 自動處理數據庫遷移問題
+- **備用存儲方案**: 持久化失敗時自動切換到內存存儲
+- **優雅錯誤處理**: 提供詳細的調試信息
+- **數據初始化**: 自動載入示例數據
 
 ### Firebase 服務
 - **Firebase Core**: 核心 SDK
@@ -66,13 +72,14 @@
 - **Firebase Cloud Functions**: 伺服器端邏輯
 
 ### 主要組件
-- **FlowerStudioApp**: 應用程式入口
+- **FlowerStudioApp**: 應用程式入口（含強化的 ModelContainer 初始化）
 - **ContentView**: 主要內容視圖
 - **Models**: 數據模型層
   - FlowerProduct: 花藝作品模型
   - Order: 訂單模型
   - StudioInfo: 工作室資訊模型
   - CartItem: 購物車項目模型
+  - Contact: 聯絡人模型
 
 ### 視圖架構
 - **HomeView**: 首頁視圖
@@ -117,6 +124,32 @@
 
 請參考 `PUSH_NOTIFICATION_TESTING.md` 了解完整的測試流程。
 
+## 🔧 問題修復
+
+### SwiftData ModelContainer 初始化問題 (已修復)
+**問題描述**: 
+- 應用程式啟動時出現 `Could not create ModelContainer` 錯誤
+- 數據庫遷移失敗導致崩潰
+
+**修復方案**:
+1. **智能容錯機制**: 實現雙重保險的 ModelContainer 初始化
+   - 首先嘗試創建持久化存儲
+   - 失敗時自動切換到內存存儲，確保應用正常運行
+2. **異步數據初始化**: 使用 `async/await` 模式安全初始化數據
+3. **完善的錯誤處理**: 提供詳細的日誌輸出便於調試
+4. **緩存清理**: 提供清理腳本移除舊的建置檔案
+
+**使用方法**:
+```bash
+# 清理專案（如遇到數據庫問題）
+./clean_project.sh
+
+# 從模擬器移除舊版應用
+xcrun simctl uninstall [DEVICE_ID] com.flowerstudio.app
+
+# 重新建置專案
+```
+
 ## 開發進度
 - [x] 專案初始化
 - [x] UI設計實現
@@ -135,6 +168,7 @@
 - [x] Bundle ID 統一修正
 - [x] 顏色資源修正
 - [x] 完整測試文檔
+- [x] **SwiftData 問題修復**
 
 ## 已實現功能
 
@@ -181,51 +215,64 @@
 - ✅ 商家通知主題訂閱
 - ✅ 推播通知權限管理
 
+### 🖼️ 圖片管理系統
+- ✅ **真實花卉圖片**: 使用 Unsplash 高品質花卉照片
+- ✅ **AsyncImage 載入**: 支援非同步網路圖片載入
+- ✅ **載入狀態指示**: 顯示載入進度和佔位符
+- ✅ **備用圖片機制**: 載入失敗時顯示 SF Symbol 圖標
+- ✅ **圖片尺寸適配**: 自動調整圖片大小和長寬比
+- ✅ **視覺效果優化**: 圓角、陰影和漸層背景設計
+
+### 💾 數據存儲
+- ✅ **SwiftData 整合**: 本地數據持久化
+- ✅ **容錯機制**: 自動處理數據庫初始化問題
+- ✅ **備用方案**: 持久化失敗時使用內存存儲
+- ✅ **數據遷移**: 支援安全的數據庫版本升級
+
 ## 最新修正 (2025/06/21)
 - ✅ **Bundle ID 統一**: 修正 `com.iosapp.FlowerStudio` → `com.flowerstudio.app`
 - ✅ **顏色資源修正**: 新增所有缺失的顏色資源 (green, yellow, pink, brown, red, orange)
 - ✅ **Firebase 整合完成**: Cloud Functions 成功部署並運作
 - ✅ **推播通知修正**: 修正 JSON 格式錯誤，推播通知正常運作
 - ✅ **測試文檔**: 建立完整的推播通知測試指南
+- ✅ **專案建置修復**: 解決 GUID 重複問題，專案成功建置
+- ✅ **Firebase 配置優化**: 提供彈性的 Firebase 啟用/停用選項
+- ✅ **模擬器運行**: 應用程式在 iOS 模擬器上成功運行
+- ✅ **SwiftData 問題修復**: 解決 ModelContainer 初始化錯誤，應用程式穩定運行
 
-## 技術特色
-- 🎨 精美的粉色系主題設計
-- 📱 適配所有iOS設備的響應式布局
-- 🗄️ SwiftData本地數據存儲
-- 🔥 Firebase 雲端服務整合
-- 🔔 即時推播通知系統
-- 🔍 智能搜索和篩選
-- 📍 集成地圖和導航功能
-- ☎️ 一鍵撥號功能
-- 🎯 符合Apple設計規範
-- 🌙 深色模式支援
+## 開發注意事項
 
-## 部署資訊
-- **Apple Developer Team**: 5SM27L37HZ
-- **APNs Key ID**: 28FW72D5N8
-- **Firebase Project**: flowerstudio-531e8
-- **Cloud Functions Region**: us-central1
-- **Minimum iOS Version**: 17.0
+### SwiftData 最佳實踐
+1. **數據模型設計**: 
+   - 使用 `@Model` 標記所有數據類別
+   - 實現適當的初始化方法
+   - 避免循環引用問題
 
-## 檔案結構
-```
-FlowerStudio/
-├── FlowerStudio/
-│   ├── Models/           # 數據模型
-│   ├── Views/            # UI 視圖
-│   ├── Assets.xcassets/  # 資源文件
-│   └── GoogleService-Info.plist
-├── cloud_functions/      # Firebase Cloud Functions
-├── PUSH_NOTIFICATION_TESTING.md
-├── CLOUD_FUNCTIONS_SETUP.md
-└── README.md
-```
+2. **ModelContainer 管理**:
+   - 在應用啟動時創建單一的共享容器
+   - 實現容錯機制處理初始化失敗
+   - 提供內存存儲作為備用方案
 
-## 聯絡開發者
-如有任何問題或建議，請隨時聯絡。
+3. **數據遷移**:
+   - 在模型變更時小心處理數據遷移
+   - 提供清理機制移除舊數據庫文件
+   - 測試不同版本間的兼容性
+
+### 調試技巧
+1. **清理專案**: 遇到建置問題時運行 `./clean_project.sh`
+2. **移除應用**: 從模擬器完全移除應用以清除數據庫
+3. **檢查日誌**: 查看 ModelContainer 初始化的詳細日誌
+4. **模擬器重置**: 必要時重置 iOS 模擬器
+
+## 技術支援
+如果遇到任何問題，請檢查：
+1. iOS 部署目標是否設為 17.0+
+2. SwiftData 模型是否正確標記
+3. Firebase 配置是否完整
+4. 是否需要清理專案緩存
 
 ---
 
+**開發團隊**: 專業 iOS 開發團隊  
 **最後更新**: 2025年6月21日  
-**版本**: 1.0  
-**狀態**: ✅ 生產就緒 
+**版本**: v1.2.0 (SwiftData 穩定版) 

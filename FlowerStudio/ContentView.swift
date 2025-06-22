@@ -17,7 +17,10 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var studioInfo: [StudioInfo]
     @State private var selectedTab = 0
-    
+    @StateObject private var contactManager = ContactManager.shared
+    @StateObject private var authManager = AuthManager.shared
+    @State private var showingLoginSheet = false
+
     var body: some View {
         TabView(selection: $selectedTab) {
             // 首頁
@@ -52,20 +55,44 @@ struct ContentView: View {
                 }
                 .tag(3)
             
+            // 業主管理/More頁面
+            if authManager.isMerchant() {
+                MerchantDashboardView()
+                    .tabItem {
+                        Image(systemName: "chart.bar.fill")
+                        Text("業主管理")
+                    }
+                    .tag(4)
+            } else {
+                MoreView(showingLoginSheet: $showingLoginSheet)
+                    .tabItem {
+                        Image(systemName: "ellipsis")
+                        Text("More")
+                    }
+                    .tag(4)
+            }
+            
             // 聯絡我們
             ContactView()
                 .tabItem {
                     Image(systemName: "phone.fill")
                     Text("聯絡我們")
                 }
-                .tag(4)
+                .tag(5)
         }
         .accentColor(.pink)
+        .sheet(isPresented: $showingLoginSheet) {
+            LoginView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .switchToCart)) { _ in
             selectedTab = 2 // 切換到購物車標籤頁
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToOrders)) { _ in
             selectedTab = 3 // 切換到訂單頁面
+        }
+        .onAppear {
+            contactManager.setModelContext(modelContext)
+            authManager.setModelContext(modelContext)
         }
     }
 }
@@ -73,6 +100,7 @@ struct ContentView: View {
 // MARK: - 首頁視圖
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var notificationManager: LocalNotificationManager
     @Query private var studioInfo: [StudioInfo]
     @Query(filter: #Predicate<FlowerProduct> { $0.isFeatured }) 
     private var featuredProducts: [FlowerProduct]
@@ -100,6 +128,18 @@ struct HomeView: View {
             }
             .navigationTitle("花漾花藝工作室")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("💼") {
+                        notificationManager.sendTestMerchantNotification()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("🧪") {
+                        notificationManager.sendTestNotification()
+                    }
+                }
+            }
         }
     }
     
@@ -290,16 +330,56 @@ struct FeaturedProductCard: View {
     var body: some View {
         NavigationLink(destination: ProductDetailView(product: product)) {
             VStack(alignment: .leading, spacing: 8) {
-                // 作品圖片佔位符
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(LinearGradient(
-                        colors: [Color(product.category.color).opacity(0.3), 
-                                Color(product.category.color).opacity(0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 160, height: 120)
-                    .overlay(
+                // 作品圖片區域
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(LinearGradient(
+                            colors: [Color(product.category.color).opacity(0.3), 
+                                    Color(product.category.color).opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .frame(width: 160, height: 120)
+                    
+                    // 載入網路圖片
+                    if let imageURL = product.imageURL, let url = URL(string: imageURL) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 160, height: 120)
+                                    .clipped()
+                            case .failure(_):
+                                // 載入失敗，顯示備用圖標
+                                VStack(spacing: 6) {
+                                    Image(systemName: "photo")
+                                        .font(.title)
+                                        .foregroundColor(.gray)
+                                    Text("圖片載入失敗")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            case .empty:
+                                // 載入中顯示的佔位符
+                                VStack(spacing: 6) {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: Color(product.category.color)))
+                                    Text("載入中...")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .cornerRadius(12)
+                        .onAppear {
+                            print("🏠 首頁載入圖片: \(product.name) - \(imageURL)")
+                        }
+                    } else {
+                        // 備用的SF Symbol圖標
                         VStack {
                             Image(systemName: product.category.iconName)
                                 .font(.title)
@@ -308,7 +388,24 @@ struct FeaturedProductCard: View {
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
-                    )
+                    }
+                    
+                    // 精選標籤
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(.yellow)
+                                .padding(4)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(radius: 1)
+                        }
+                        Spacer()
+                    }
+                    .padding(6)
+                }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.name)
